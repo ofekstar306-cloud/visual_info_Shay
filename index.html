@@ -1,47 +1,1202 @@
-name: Deploy static content to Pages
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מרכז ניתוח נתונים | דשבורד אינטראקטיבי מתקדם</title>
+    <link href="https://cdn.jsdelivr.net/npm/@fontsource/assistant@5.1.0/index.css" rel="stylesheet">
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-on:
-  # הפעלת התהליך בכל פעם שדוחפים קוד לענף main
-  push:
-    branches: ["main"] # שימי לב: אם הענף שלך נקרא master, שחליפי את המילה main ב-master
-  # מאפשר הפעלה ידנית של התהליך דרך ממשק המשתמש של GitHub
-  workflow_dispatch:
+        :root {
+            --primary: #0b0b1a;
+            --secondary: #111128;
+            --accent: #1a1a3e;
+            --highlight: #e94560;
+            --highlight-glow: rgba(233, 69, 96, 0.4);
+            --gold: #f0c040;
+            --blue: #4361ee;
+            --teal: #06b6d4;
+            --light: #f8f9fa;
+            --glass: rgba(255, 255, 255, 0.06);
+            --glass-border: rgba(255, 255, 255, 0.12);
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-muted: rgba(255, 255, 255, 0.45);
+        }
 
-# הגדרת הרשאות הכרחיות עבור פריסה ל-GitHub Pages
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+        html {
+            scroll-behavior: smooth;
+        }
 
-# מניעת הפעלה של מספר תהליכי פריסה במקביל
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
+        body {
+            font-family: 'Assistant', 'Segoe UI', Tahoma, Arial, sans-serif;
+            background: var(--primary);
+            color: var(--text-primary);
+            line-height: 1.75;
+            overflow-x: hidden;
+            font-display: swap;
+        }
 
-jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    
-    # הנה הפתרון שמעלים את אזהרת ה-Node.js 20!
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+        /* ══════════════════════════════════════
+           ANIMATED BACKGROUND
+        ══════════════════════════════════════ */
+        .bg-canvas {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
+        .bg-canvas .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.25;
+            will-change: transform;
+        }
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          # נתיב התיקייה שמועלית (הנקודה מציינת את התיקייה הראשית שבה נמצא ה-index.html שלך)
-          path: '.'
+        .bg-canvas .orb:nth-child(1) {
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, var(--highlight), transparent 70%);
+            top: -15%; right: -10%;
+            animation: orbFloat1 22s ease-in-out infinite;
+        }
+        .bg-canvas .orb:nth-child(2) {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, var(--blue), transparent 70%);
+            bottom: -15%; left: -10%;
+            animation: orbFloat2 18s ease-in-out infinite;
+        }
+        .bg-canvas .orb:nth-child(3) {
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, var(--gold), transparent 70%);
+            top: 45%; left: 40%;
+            animation: orbFloat3 25s ease-in-out infinite;
+        }
+        .bg-canvas .orb:nth-child(4) {
+            width: 280px; height: 280px;
+            background: radial-gradient(circle, var(--teal), transparent 70%);
+            top: 15%; left: 15%;
+            animation: orbFloat2 20s ease-in-out infinite reverse;
+        }
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+        @keyframes orbFloat1 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-60px, 80px) scale(1.1); }
+            66% { transform: translate(40px, -50px) scale(0.9); }
+        }
+        @keyframes orbFloat2 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(70px, -60px) scale(1.15); }
+            66% { transform: translate(-40px, 70px) scale(0.95); }
+        }
+        @keyframes orbFloat3 {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(-80px, -40px) scale(0.85); }
+            66% { transform: translate(60px, 50px) scale(1.1); }
+        }
+
+        /* ══════════════════════════════════════
+           PARTICLES
+        ══════════════════════════════════════ */
+        .particle-field {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .particle-field .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.35);
+            border-radius: 50%;
+            animation: particleRise linear infinite;
+        }
+
+        @keyframes particleRise {
+            0% { transform: translateY(105vh) scale(0); opacity: 0; }
+            8% { opacity: 1; }
+            92% { opacity: 1; }
+            100% { transform: translateY(-5vh) scale(1); opacity: 0; }
+        }
+
+        /* ══════════════════════════════════════
+           NAVBAR
+        ══════════════════════════════════════ */
+        .top-nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 1000;
+            padding: 0.85rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            backdrop-filter: blur(25px);
+            background: rgba(11, 11, 26, 0.65);
+            border-bottom: 1px solid var(--glass-border);
+            transition: padding 0.4s ease, background 0.4s ease;
+        }
+
+        .top-nav.shrink {
+            padding: 0.55rem 2rem;
+            background: rgba(11, 11, 26, 0.92);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 1.2rem;
+            text-decoration: none;
+            color: #fff;
+        }
+
+        .nav-logo-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--highlight), var(--blue));
+            display: grid;
+            place-items: center;
+            box-shadow: 0 4px 15px var(--highlight-glow);
+        }
+
+        .nav-logo-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: #fff;
+        }
+
+        .nav-items {
+            display: flex;
+            gap: 1.8rem;
+            list-style: none;
+        }
+
+        .nav-items a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.92rem;
+            font-weight: 500;
+            transition: color 0.3s;
+            position: relative;
+            padding-bottom: 3px;
+        }
+
+        .nav-items a::after {
+            content: '';
+            position: absolute;
+            bottom: 0; right: 0;
+            width: 0; height: 2px;
+            background: var(--highlight);
+            border-radius: 2px;
+            transition: width 0.35s ease;
+        }
+
+        .nav-items a:hover {
+            color: #fff;
+        }
+
+        .nav-items a:hover::after {
+            width: 100%;
+        }
+
+        .nav-burger {
+            display: none;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.6rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        /* ══════════════════════════════════════
+           HERO
+        ══════════════════════════════════════ */
+        .hero-section {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 7rem 1.5rem 4rem;
+        }
+
+        .hero-inner {
+            max-width: 880px;
+        }
+
+        .hero-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 20px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--gold);
+            margin-bottom: 2rem;
+            backdrop-filter: blur(12px);
+            animation: fadeSlideDown 0.7s ease both;
+        }
+
+        .hero-tag .dot {
+            width: 7px; height: 7px;
+            background: var(--gold);
+            border-radius: 50%;
+            animation: dotPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes dotPulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(240, 192, 64, 0.5); }
+            50% { opacity: 0.6; box-shadow: 0 0 0 6px rgba(240, 192, 64, 0); }
+        }
+
+        .hero-title {
+            font-size: clamp(2.4rem, 5.5vw, 4.2rem);
+            font-weight: 900;
+            line-height: 1.15;
+            margin-bottom: 1.5rem;
+            animation: fadeSlideUp 0.8s ease 0.15s both;
+        }
+
+        .hero-title .grad {
+            background: linear-gradient(135deg, var(--highlight), var(--gold), var(--blue));
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradShift 4s ease-in-out infinite;
+        }
+
+        @keyframes gradShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1.05rem, 2.2vw, 1.25rem);
+            color: var(--text-secondary);
+            max-width: 680px;
+            margin: 0 auto 2.5rem;
+            animation: fadeSlideUp 0.8s ease 0.35s both;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            animation: fadeSlideUp 0.8s ease 0.55s both;
+        }
+
+        .cta-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 32px;
+            border-radius: 999px;
+            font-size: 1rem;
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+            transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .cta-btn.primary {
+            background: linear-gradient(135deg, var(--highlight), #c23152);
+            color: #fff;
+            box-shadow: 0 8px 30px var(--highlight-glow);
+        }
+
+        .cta-btn.primary:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 14px 45px var(--highlight-glow);
+        }
+
+        .cta-btn.ghost {
+            background: var(--glass);
+            color: #fff;
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(12px);
+        }
+
+        .cta-btn.ghost:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-3px);
+        }
+
+        .hero-scroll-arrow {
+            position: absolute;
+            bottom: 2.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: scrollBounce 2s ease-in-out infinite;
+        }
+
+        .hero-scroll-arrow svg {
+            width: 28px; height: 28px;
+            color: var(--text-muted);
+        }
+
+        @keyframes scrollBounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(12px); }
+        }
+
+        /* ═════════════════════════════════════
+           SECTION SHARED
+        ══════════════════════════════════════ */
+        .page-section {
+            position: relative;
+            z-index: 1;
+            padding: 6rem 1.5rem;
+        }
+
+        .section-wrap {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-top {
+            text-align: center;
+            margin-bottom: 3.5rem;
+        }
+
+        .section-top .pill {
+            display: inline-block;
+            padding: 5px 16px;
+            background: rgba(233, 69, 96, 0.1);
+            border: 1px solid rgba(233, 69, 96, 0.25);
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--highlight);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .section-top h2 {
+            font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+            font-weight: 900;
+            margin-bottom: 0.75rem;
+        }
+
+        .section-top p {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* ══════════════════════════════════════
+           BENEFITS
+        ══════════════════════════════════════ */
+        .benefits-matrix {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .benefit-tile {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 2.2rem 1.8rem;
+            backdrop-filter: blur(10px);
+            transition: transform 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .benefit-tile::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; left: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--highlight), var(--gold), var(--blue));
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .benefit-tile:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .benefit-tile:hover::before {
+            opacity: 1;
+        }
+
+        .benefit-tile .icon-box {
+            width: 56px; height: 56px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            font-size: 1.6rem;
+            margin-bottom: 1.3rem;
+        }
+
+        .benefit-tile .icon-box.red { background: rgba(233, 69, 96, 0.15); }
+        .benefit-tile .icon-box.blue { background: rgba(67, 97, 238, 0.15); }
+        .benefit-tile .icon-box.gold { background: rgba(240, 192, 64, 0.15); }
+        .benefit-tile .icon-box.teal { background: rgba(6, 182, 212, 0.15); }
+        .benefit-tile .icon-box.purple { background: rgba(139, 92, 246, 0.15); }
+        .benefit-tile .icon-box.green { background: rgba(16, 185, 129, 0.15); }
+
+        .benefit-tile h3 {
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin-bottom: 0.6rem;
+        }
+
+        .benefit-tile p {
+            font-size: 0.93rem;
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        /* ══════════════════════════════════════
+           DASHBOARD — IFRAME METHOD
+        ══════════════════════════════════════ */
+        .dash-section {
+            background: linear-gradient(180deg, transparent 0%, rgba(15, 52, 96, 0.12) 50%, transparent 100%);
+        }
+
+        .dash-frame {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 22px;
+            overflow: hidden;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 20px 80px rgba(0, 0, 0, 0.3);
+            transition: box-shadow 0.5s ease;
+        }
+
+        .dash-frame:hover {
+            box-shadow: 0 25px 100px rgba(0, 0, 0, 0.45);
+        }
+
+        .dash-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.85rem 1.4rem;
+            background: rgba(0, 0, 0, 0.35);
+            border-bottom: 1px solid var(--glass-border);
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .dash-dots {
+            display: flex;
+            gap: 7px;
+        }
+
+        .dash-dots i {
+            width: 11px; height: 11px;
+            border-radius: 50%;
+            display: block;
+        }
+
+        .dash-dots i:nth-child(1) { background: #ff5f57; }
+        .dash-dots i:nth-child(2) { background: #ffbd2e; }
+        .dash-dots i:nth-child(3) { background: #28c840; }
+
+        .dash-bar-title {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .dash-bar-btn {
+            padding: 6px 18px;
+            background: var(--highlight);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.3s;
+            text-decoration: none;
+        }
+
+        .dash-bar-btn:hover {
+            background: #d43a54;
+        }
+
+        .dash-viewer {
+            position: relative;
+            width: 100%;
+        }
+
+        .dash-viewer iframe {
+            width: 100%;
+            min-height: 800px;
+            border: none;
+            display: block;
+        }
+
+        .loader-panel {
+            position: absolute;
+            inset: 0;
+            background: var(--primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            z-index: 5;
+            transition: opacity 0.7s ease, visibility 0.7s ease;
+        }
+
+        .loader-panel.gone {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .loader-ring {
+            width: 48px; height: 48px;
+            border: 3px solid rgba(255, 255, 255, 0.08);
+            border-top-color: var(--highlight);
+            border-radius: 50%;
+            animation: spinLoader 1s linear infinite;
+        }
+
+        @keyframes spinLoader {
+            to { transform: rotate(360deg); }
+        }
+
+        .loader-label {
+            font-size: 0.92rem;
+            color: var(--text-secondary);
+        }
+
+        /* ══════════════════════════════════════
+           ABOUT / CHARTS INFO
+        ══════════════════════════════════════ */
+        .about-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .about-text h3 {
+            font-size: 1.7rem;
+            font-weight: 800;
+            margin-bottom: 1.3rem;
+        }
+
+        .about-text p {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            line-height: 1.9;
+        }
+
+        .about-text strong {
+            color: #fff;
+        }
+
+        .about-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.2rem;
+            margin-top: 2rem;
+        }
+
+        .about-stat {
+            text-align: center;
+            padding: 1.4rem;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+        }
+
+        .about-stat .num {
+            font-size: 1.8rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--highlight), var(--gold));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .about-stat .lbl {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+        }
+
+        .about-graphic {
+            display: flex;
+            justify-content: center;
+        }
+
+        .graphic-box {
+            width: 100%;
+            max-width: 420px;
+            aspect-ratio: 1;
+            background: linear-gradient(135deg, rgba(233, 69, 96, 0.08), rgba(67, 97, 238, 0.08));
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .graphic-box::after {
+            content: '';
+            position: absolute;
+            width: 250%; height: 250%;
+            background: conic-gradient(from 0deg, transparent, rgba(233, 69, 96, 0.08), transparent, rgba(67, 97, 238, 0.08), transparent);
+            animation: spinSlow 12s linear infinite;
+        }
+
+        @keyframes spinSlow {
+            to { transform: rotate(360deg); }
+        }
+
+        .graphic-box > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .graphic-emoji {
+            font-size: 4.5rem;
+            animation: gentleFloat 3.5s ease-in-out infinite;
+        }
+
+        @keyframes gentleFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+
+        .graphic-box h4 {
+            font-size: 1.25rem;
+            font-weight: 800;
+        }
+
+        .graphic-box p {
+            font-size: 0.88rem;
+            color: var(--text-secondary);
+            text-align: center;
+            max-width: 260px;
+        }
+
+        /* ══════════════════════════════════════
+           CREDITS
+        ══════════════════════════════════════ */
+        .credits-section {
+            background: linear-gradient(180deg, transparent, rgba(15, 52, 96, 0.1));
+        }
+
+        .credits-card {
+            max-width: 750px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, var(--glass), rgba(233, 69, 96, 0.04));
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 3rem 2.5rem;
+            backdrop-filter: blur(12px);
+            text-align: center;
+        }
+
+        .credits-card h3 {
+            font-size: 1.55rem;
+            font-weight: 800;
+            margin-bottom: 0.8rem;
+        }
+
+        .credits-card > p {
+            color: var(--text-secondary);
+            margin-bottom: 2.5rem;
+            font-size: 1.02rem;
+        }
+
+        .creator-profile {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .avatar-ring {
+            width: 100px; height: 100px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: #fff;
+            position: relative;
+        }
+
+        .avatar-ring.ofek {
+            background: linear-gradient(135deg, var(--highlight), var(--blue));
+            box-shadow: 0 8px 35px var(--highlight-glow);
+        }
+
+        .avatar-ring::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .creator-name {
+            font-size: 1.2rem;
+            font-weight: 800;
+        }
+
+        .creator-title {
+            font-size: 0.88rem;
+            color: var(--text-muted);
+        }
+
+        /* ══════════════════════════════════════
+           FOOTER
+        ══════════════════════════════════════ */
+        .page-footer {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 2rem 1.5rem;
+            border-top: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .page-footer a {
+            color: var(--highlight);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .page-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ══════════════════════════════════════
+           ANIMATIONS
+        ══════════════════════════════════════ */
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(35px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeSlideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .reveal-on-scroll {
+            opacity: 0;
+            transform: translateY(45px);
+            transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .reveal-on-scroll.in-view {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ══════════════════════════════════════
+           RESPONSIVE
+        ══════════════════════════════════════ */
+        @media (max-width: 768px) {
+            .nav-items {
+                display: none;
+                position: absolute;
+                top: 100%; right: 0; left: 0;
+                background: rgba(11, 11, 26, 0.97);
+                backdrop-filter: blur(25px);
+                flex-direction: column;
+                padding: 1.2rem 2rem;
+                gap: 0.8rem;
+                border-bottom: 1px solid var(--glass-border);
+            }
+
+            .nav-items.open {
+                display: flex;
+            }
+
+            .nav-burger {
+                display: block;
+            }
+
+            .about-grid {
+                grid-template-columns: 1fr;
+                gap: 2.5rem;
+            }
+
+            .about-graphic {
+                order: -1;
+            }
+
+            .graphic-box {
+                max-width: 280px;
+            }
+
+            .dash-viewer iframe {
+                min-height: 550px;
+            }
+
+            .credits-card {
+                padding: 2rem 1.5rem;
+            }
+
+            .benefits-matrix {
+                grid-template-columns: 1fr;
+            }
+
+            .dash-bar {
+                padding: 0.75rem 1rem;
+            }
+        }
+
+        /* ══════════════════════════════════════
+           SCROLLBAR
+        ══════════════════════════════════════ */
+        ::-webkit-scrollbar { width: 7px; }
+        ::-webkit-scrollbar-track { background: var(--primary); }
+        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--highlight); }
+    </style>
+</head>
+<body>
+
+    <div class="bg-canvas">
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+    </div>
+
+    <div class="particle-field" id="particleField"></div>
+
+    <nav class="top-nav" id="topNav">
+        <a href="#hero" class="nav-logo">
+            <div class="nav-logo-icon">
+                <svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z"/></svg>
+            </div>
+            <span>מרכז נתונים</span>
+        </a>
+        <ul class="nav-items" id="navItems">
+            <li><a href="#hero">ראשי</a></li>
+            <li><a href="#benefits">תועלות</a></li>
+            <li><a href="#dashboard">הדשבורד</a></li>
+            <li><a href="#about">אודות</a></li>
+            <li><a href="#credits">יוצרים</a></li>
+        </ul>
+        <button class="nav-burger" id="navBurger" aria-label="תפריט">☰</button>
+    </nav>
+
+    <section class="hero-section" id="hero">
+        <div class="hero-inner">
+            <div class="hero-tag">
+                <span class="dot"></span>
+                מערכת ניתוח נתונים מתקדמת
+            </div>
+            <h1 class="hero-title">
+                לחשוף את הסיפור<br>
+                <span class="grad">שטמון בנתונים</span>
+            </h1>
+            <p class="hero-subtitle">
+                דשבורד אינטראקטיבי רב־עוצמה שמציג תובנות בזמן אמת, 
+                מאפשר סינון וחקירה חכמה, והופך נתונים גולמיים להחלטות אסטרטגיות — 
+                הכל בממשק אחד ברור ונגיש.
+            </p>
+            <div class="hero-actions">
+                <a href="#dashboard" class="cta-btn primary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                    לדשבורד
+                </a>
+                <a href="#about" class="cta-btn ghost">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                    למידע נוסף
+                </a>
+            </div>
+        </div>
+        <div class="hero-scroll-arrow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+        </div>
+    </section>
+
+    <section class="page-section" id="benefits">
+        <div class="section-wrap">
+            <div class="section-top reveal-on-scroll">
+                <span class="pill">למה זה שווה?</span>
+                <h2>התועלות שבמערכת</h2>
+                <p>הדשבורד שלנו מביא את הנתונים לחיים ומאפשר החלטות חכמות יותר</p>
+            </div>
+            <div class="benefits-matrix">
+                <div class="benefit-tile reveal-on-scroll">
+                    <div class="icon-box red">📊</div>
+                    <h3>ויזואליזציה אינטואיטיבית</h3>
+                    <p>תרשימים גרפיים חדים הממירים מידע מורכב לתמונה ברורה — זיהוי מגמות ודפוסים בלי להשקיע מאמץ.</p>
+                </div>
+                <div class="benefit-tile reveal-on-scroll">
+                    <div class="icon-box blue">⚡</div>
+                    <h3>נתונים עדכניים</h3>
+                    <p>הנתונים מתעדכנים באופן שוטף, כך שתמיד יש לכם את התמונה האמיתית והרלוונטית ביותר.</p>
+                </div>
+                <div class="benefit-tile reveal-on-scroll">
+                    <div class="icon-box gold">🔍</div>
+                    <h3>חקירה מעמיקה</h3>
+                    <p>סינון מתקדם, צלילה לפרטים והשוואה בין קטגוריות — הכל ישירות מהדשבורד.</p>
+                </div>
+                <div class="benefit-tile reveal-on-scroll">
+                    <div class="icon-box teal">📱</div>
+                    <h3>התאמה לכל מסך</h3>
+                    <p>נגיש מכל מכשיר — מחשב נייח, לפטופ, טאבלט או סמארטפון, בכל זמן ובכל מקום.</p>
+                </div>
+                <div class="benefit-tile reveal-on-scroll">
+                    <div class="icon-box purple">🤝</div>
+                    <h3>שיתוף ושקיפות</h3>
+                    <p>יכולת שיתוף תובנות בקלות עם צוותים ומקבלי החלטות, עם שקיפות מלאה בתהליך.</p>
+                </div>
+                <div class="benefit-tile reveal-on-scroll">
+                    <div class="icon-box green">🎯</div>
+                    <h3>החלטות מבוססות נתונים</h3>
+                    <p>תובנות מדויקות המאפשרות קבלת החלטות אסטרטגיות מושכלות, עם פחות ניחושים ויותר ביטחון.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="page-section dash-section" id="dashboard">
+        <div class="section-wrap">
+            <div class="section-top reveal-on-scroll">
+                <span class="pill">הדשבורד</span>
+                <h2>תרשימים אינטראקטיביים</h2>
+                <p>חקרו את הנתונים — לחצו, סננו וצללו לעומק המידע</p>
+            </div>
+            <div class="dash-frame reveal-on-scroll">
+                <div class="dash-bar">
+                    <div class="dash-dots"><i></i><i></i><i></i></div>
+                    <span class="dash-bar-title">Dashboard 1 — Tableau Public</span>
+                    <a class="dash-bar-btn" href="https://public.tableau.com/views/Book2_17764147303840/Dashboard1?:language=en-US&:sid=&:redirect=auth&:display_count=n&:origin=viz_share_link" target="_blank" rel="noopener noreferrer">פתיחה מלאה </a>
+                </div>
+                <div class="dash-viewer">
+                    <div class="loader-panel" id="loaderPanel">
+                        <div class="loader-ring"></div>
+                        <span class="loader-label">טוען את הדשבורד... אנא המתינו מספר שניות</span>
+                    </div>
+                    <iframe
+                        id="tableauIframe"
+                        src="https://public.tableau.com/views/Book2_17764147303840/Dashboard1?:embed=y&:showVizHome=no&:tabs=no&:toolbar=yes&:display_count=n&:language=en-US"
+                        allowfullscreen
+                        allow="autoplay; encrypted-media"
+                        loading="lazy"
+                        title="Tableau Public Dashboard"
+                        onload="document.getElementById('loaderPanel').classList.add('gone');">
+                    </iframe>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="page-section" id="about">
+        <div class="section-wrap">
+            <div class="section-top reveal-on-scroll">
+                <span class="pill">אודות</span>
+                <h2>מהות התרשימים</h2>
+                <p>הבנה מעמיקה של הנתונים המוצגים ותרומתם</p>
+            </div>
+            <div class="about-grid">
+                <div class="about-text reveal-on-scroll">
+                    <h3>כוחו של ויזואליזציה בניתוח נתונים</h3>
+                    <p>
+                        הדשבורד שלנו מציג סדרה של תרשימים אינטראקטיביים שנבנו בטכנולוגיית
+                        <strong>Tableau Public</strong> — פלטפורמה מובילה עולמית לויזואליזציה של נתונים.
+                        כל תרשים בדשבורד מספר סיפור ייחודי:
+                    </p>
+                    <p>
+                        <strong>תרשימי עמודות וקווים</strong> — ממחישים מגמות לאורך זמן ומאפשרים זיהוי דפוסים,
+                        עליות וירידות משמעותיות בנתונים במבט אחד.
+                    </p>
+                    <p>
+                        <strong>תרשימי עוגה ודונאט</strong> — מציגים חלוקה יחסית בין קטגוריות שונות,
+                        ומאפשרים הבנה מהירה של יחסי הגדלים והפרופורציות.
+                    </p>
+                    <p>
+                        <strong>מפות חום וטבלאות נתונים</strong> — חושפות מתאמים וקשרים בין משתנים,
+                        ומאפשרות זיהוי נקודות חריגות ואזורים הדורשים תשומת לב מיוחדת.
+                    </p>
+                    <div class="about-stats">
+                        <div class="about-stat">
+                            <div class="num">100%</div>
+                            <div class="lbl">נתונים עדכניים</div>
+                        </div>
+                        <div class="about-stat">
+                            <div class="num">24/7</div>
+                            <div class="lbl">זמינות מלאה</div>
+                        </div>
+                        <div class="about-stat">
+                            <div class="num">∞</div>
+                            <div class="lbl">אפשרויות סינון</div>
+                        </div>
+                        <div class="about-stat">
+                            <div class="num">🚀</div>
+                            <div class="lbl">ביצועים גבוהים</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="about-graphic reveal-on-scroll">
+                    <div class="graphic-box">
+                        <div class="graphic-emoji">📈</div>
+                        <h4>הנתונים מדברים</h4>
+                        <p>כל מספר מספר סיפור — אנחנו עוזרים לכם לשמוע אותו</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="page-section credits-section" id="credits">
+        <div class="section-wrap">
+            <div class="section-top reveal-on-scroll">
+                <span class="pill">תודות</span>
+                <h2>היוצרת</h2>
+                <p>האדם שמאחורי המערכת</p>
+            </div>
+            <div class="credits-card reveal-on-scroll">
+                <h3>🎨 נבנה באהבה ובמסירות</h3>
+                <p>המערכת תוכננה, פותחה ועוצבה על ידי</p>
+                <div class="creator-profile">
+                    <div class="avatar-ring ofek">O</div>
+                    <span class="creator-name">גברת Ofek Cohen</span>
+                    <span class="creator-title">מפתחת, מעצבת ומנתחת נתונים</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="page-footer">
+        <p>© 2026 כל הזכויות שמורות — גברת Ofek Cohen | נבנה בטכנולוגיית <a href="https://www.tableau.com/" target="_blank" rel="noopener noreferrer">Tableau Public</a></p>
+    </footer>
+
+    <script>
+        /* ══════════════════════════════════════
+           PARTICLES GENERATOR
+        ══════════════════════════════════════ */
+        (function() {
+            var field = document.getElementById('particleField');
+            var total = 45;
+            for (var i = 0; i < total; i++) {
+                var p = document.createElement('div');
+                p.className = 'particle';
+                p.style.left = Math.random() * 100 + '%';
+                var dur = 8 + Math.random() * 14;
+                var del = Math.random() * 12;
+                var sz = 1.5 + Math.random() * 3;
+                p.style.animationDuration = dur + 's';
+                p.style.animationDelay = del + 's';
+                p.style.width = p.style.height = sz + 'px';
+                field.appendChild(p);
+            }
+        })();
+
+        /* ══════════════════════════════════════
+           NAVBAR SHRINK ON SCROLL
+        ══════════════════════════════════════ */
+        var topNav = document.getElementById('topNav');
+        window.addEventListener('scroll', function() {
+            if (window.scrollY > 60) {
+                topNav.classList.add('shrink');
+            } else {
+                topNav.classList.remove('shrink');
+            }
+        });
+
+        /* ══════════════════════════════════════
+           MOBILE NAV TOGGLE
+        ══════════════════════════════════════ */
+        var burger = document.getElementById('navBurger');
+        var navMenu = document.getElementById('navItems');
+        burger.addEventListener('click', function() {
+            navMenu.classList.toggle('open');
+        });
+
+        navMenu.querySelectorAll('a').forEach(function(item) {
+            item.addEventListener('click', function() {
+                navMenu.classList.remove('open');
+            });
+        });
+
+        /* ══════════════════════════════════════
+           SMOOTH SCROLL
+        ══════════════════════════════════════ */
+        document.querySelectorAll('a[href^="#"]').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                var target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    var offset = 80;
+                    var top = target.getBoundingClientRect().top + window.pageYOffset - offset;
+                    window.scrollTo({ top: top, behavior: 'smooth' });
+                }
+            });
+        });
+
+        /* ══════════════════════════════════════
+           REVEAL ON SCROLL
+        ══════════════════════════════════════ */
+        var reveals = document.querySelectorAll('.reveal-on-scroll');
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('in-view');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+        reveals.forEach(function(el) {
+            observer.observe(el);
+        });
+
+        /* ══════════════════════════════════════
+           TABLEAU IFRAME FALLBACK LOADER HIDE
+        ══════════════════════════════════════ */
+        var iframeEl = document.getElementById('tableauIframe');
+        var loader = document.getElementById('loaderPanel');
+
+        if (iframeEl && loader) {
+            setTimeout(function() {
+                loader.classList.add('gone');
+            }, 15000);
+
+            iframeEl.addEventListener('load', function() {
+                loader.classList.add('gone');
+            });
+        }
+    </script>
+</body>
+</html>
